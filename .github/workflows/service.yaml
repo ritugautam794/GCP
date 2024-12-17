@@ -1,0 +1,42 @@
+name: Build and Push Docker Image to GAR
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Google Cloud SDK
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          project_id: core-dev-435517
+
+      # Authenticate Docker to use Google Artifact Registry
+      - name: Authenticate Docker
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t us-central1-docker.pkg.dev/core-dev-435517/transcription-container/inference-ga:${{ github.sha }} .
+
+      # Push the Docker image to Google Artifact Registry
+      - name: Push Docker image to GAR
+        run: |
+          docker push us-central1-docker.pkg.dev/core-dev-435517/transcription-container/inference-ga:${{ github.sha }}
+
+      # Optionally, verify the image exists in GAR
+      - name: Verify image in GAR
+        run: |
+          gcloud artifacts docker images list us-central1-docker.pkg.dev/core-dev-435517/transcription-container
